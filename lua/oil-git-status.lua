@@ -30,6 +30,32 @@ local default_config = {
 			[" "] = " ",
 		},
 	},
+	highlights = {
+		index = {
+			["!"] = "DiagnosticUnnecessary",
+			["?"] = "DiagnosticSignWarn",
+			["A"] = "DiagnosticSignOk",
+			["C"] = "DiagnosticSignHint",
+			["D"] = "DiagnosticSignError",
+			["M"] = "DiagnosticSignInfo",
+			["R"] = "DiagnosticSignInfo",
+			["T"] = "DiagnosticSignInfo",
+			["U"] = "DiagnosticSignInfo",
+			[" "] = "DiagnosticSignInfo",
+		},
+		working_tree = {
+			["!"] = "DiagnosticUnnecessary",
+			["?"] = "DiagnosticSignWarn",
+			["A"] = "DiagnosticSignOk",
+			["C"] = "DiagnosticSignHint",
+			["D"] = "DiagnosticSignError",
+			["M"] = "DiagnosticSignInfo",
+			["R"] = "DiagnosticSignInfo",
+			["T"] = "DiagnosticSignInfo",
+			["U"] = "DiagnosticSignInfo",
+			[" "] = "DiagnosticSignInfo",
+		},
+	},
 }
 
 local current_config = vim.tbl_extend("force", default_config, {})
@@ -115,26 +141,18 @@ local function add_status_extmarks(buffer, status)
 					or (current_config.show_ignored and { index = "!", working_tree = "!" })
 
 				if status_codes then
-					-- vim.api.nvim_buf_set_extmark(buffer, namespace, n - 1, 1, {
-					-- 	virt_text = {
-					-- 		{
-					-- 			current_config.symbols.index[status_codes.index],
-					-- 			highlight_group(status_codes.index, true),
-					-- 		},
-					-- 	},
-					-- 	virt_text_pos = "inline",
-					-- 	virt_text_win_col = 0,
-					-- 	priority = 1,
-					-- })
-					vim.api.nvim_buf_set_extmark(buffer, namespace, n - 1, 1, {
-						virt_text = {
-							{
-								current_config.symbols.working_tree[status_codes.working_tree],
-								highlight_group(status_codes.working_tree, false),
-							},
-						},
-						virt_text_pos = "inline",
-						virt_text_win_col = 0,
+					vim.api.nvim_buf_set_extmark(buffer, namespace, n - 1, 0, {
+						sign_text = current_config.symbols.index[status_codes.index],
+						sign_hl_group = highlight_group(status_codes.index, true),
+						strict = false,
+						ui_watched = true,
+						priority = 1,
+					})
+					vim.api.nvim_buf_set_extmark(buffer, namespace, n - 1, 0, {
+						sign_text = current_config.symbols.working_tree[status_codes.working_tree],
+						sign_hl_group = highlight_group(status_codes.working_tree, false),
+						strict = false,
+						ui_watched = true,
 						priority = 2,
 					})
 				end
@@ -192,20 +210,6 @@ local function load_git_status(buffer, callback)
 	end)
 end
 
-local function validate_oil_config()
-	local oil_config = require("oil.config")
-	local signcolumn = oil_config.win_options.signcolumn
-	if not (vim.startswith(signcolumn, "yes") or vim.startswith(signcolumn, "auto")) then
-		vim.notify(
-			"oil-git-status requires win_options.signcolumn to be set to at least 'yes:2' or 'auto:2'",
-			vim.log.levels.WARN,
-			{
-				title = "oil-git-status",
-			}
-		)
-	end
-end
-
 local function generate_highlight_groups()
 	local highlight_groups = {}
 	for status_code, suffix in pairs(highlight_group_suffix_for_status_code) do
@@ -227,8 +231,6 @@ local highlight_groups = generate_highlight_groups()
 --- @param config {show_ignored: boolean}
 local function setup(config)
 	current_config = vim.tbl_extend("force", default_config, config or {})
-
-	validate_oil_config()
 
 	vim.api.nvim_create_autocmd({ "FileType" }, {
 		pattern = { "oil" },
@@ -268,9 +270,19 @@ local function setup(config)
 
 	for _, hl_group in ipairs(highlight_groups) do
 		if hl_group.index then
-			vim.api.nvim_set_hl(0, hl_group.hl_group, { link = "DiagnosticSignInfo", default = true })
+			-- vim.api.nvim_set_hl(0, hl_group.hl_group, { link = "DiagnosticSignInfo", default = true })
+			vim.api.nvim_set_hl(
+				0,
+				hl_group.hl_group,
+				{ link = current_config.highlights.index[hl_group.status_code], default = true }
+			)
 		else
-			vim.api.nvim_set_hl(0, hl_group.hl_group, { link = "DiagnosticSignWarn", default = true })
+			-- vim.api.nvim_set_hl(0, hl_group.hl_group, { link = "DiagnosticSignWarn", default = true })
+			vim.api.nvim_set_hl(
+				0,
+				hl_group.hl_group,
+				{ link = current_config.highlights.working_tree[hl_group.status_code], default = true }
+			)
 		end
 	end
 end
