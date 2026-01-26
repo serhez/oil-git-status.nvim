@@ -130,7 +130,10 @@ local function highlight_group(code, index)
 end
 
 local function add_status_extmarks(buffer, status)
-	vim.api.nvim_buf_clear_namespace(buffer, namespace, 0, -1)
+	local ok = pcall(vim.api.nvim_buf_clear_namespace, buffer, namespace, 0, -1)
+	if not ok then
+		return
+	end
 
 	if status then
 		for n = 1, vim.api.nvim_buf_line_count(buffer) do
